@@ -743,18 +743,43 @@ VIEWS.create = {
     $$('.pick-toggle button').forEach(b => b.onclick = () => { d.pick = b.dataset.pick; $$('.pick-toggle button').forEach(x => x.classList.toggle('on', x === b)); });
     ['from', 'stop', 'to'].forEach(k => {
       const inp = $('#in_' + k), list = $('#ac_' + k);
-      let timer = null, seq = 0;
+      let timer = null, seq = 0, hitsNow = [], enterWaiting = false;
+      const pick = h => {
+        clearTimeout(timer); seq++; enterWaiting = false;   // 늦게 오는 검색 결과는 버림
+        list.classList.remove('show');
+        setPoint(k, { name: h.name, lat: h.lat, lng: h.lng });
+        inp.blur();                                         // 한글 조합 끝내기
+      };
       const show = (hits, loading) => {
+        hitsNow = hits;
         list.innerHTML = hits.length
           ? hits.map((p, i) => `<div data-i="${i}">${p.addr ? '🔎' : '📍'} ${esc(p.name)}${p.addr ? `<span class="ac-addr">${esc(p.addr)}</span>` : ''}</div>`).join('')
             + (loading ? '<div class="ac-src">카카오 장소 검색 중…</div>' : '')
           : `<div style="color:var(--muted)">${loading ? '카카오 장소 검색 중…' : '검색 결과 없음 — 지도에서 핀으로 지정해 주세요'}</div>`;
         list.classList.add('show');
-        $$('div[data-i]', list).forEach(el => el.onclick = () => { const h = hits[+el.dataset.i]; setPoint(k, { name: h.name, lat: h.lat, lng: h.lng }); list.classList.remove('show'); });
+        if (!loading) {   // 조합 중·검색 중에 Enter 를 눌렀으면 결과 오자마자 선택
+          if (enterWaiting && hits.length) pick(hits[0]);
+          enterWaiting = false;
+        }
+      };
+      inp.addEventListener('compositionend', () => setTimeout(() => {
+        if (enterWaiting && hitsNow.length && !$('.ac-src', list) && !/검색 중/.test(list.textContent)) pick(hitsNow[0]);
+      }, 0));
+      // 목록을 누를 때 입력칸이 포커스를 잃지 않게 → 한글 조합이 끝나며 목록이 다시 그려져 클릭이 씹히는 문제 방지
+      list.onmousedown = e => {
+        e.preventDefault();
+        const el = e.target.closest('div[data-i]');
+        if (el && hitsNow[+el.dataset.i]) pick(hitsNow[+el.dataset.i]);
+      };
+      list.onclick = e => {   // 터치 등 mousedown 이 없을 때 대비
+        if (!list.classList.contains('show')) return;   // mousedown 에서 이미 골랐음
+        const el = e.target.closest('div[data-i]');
+        if (el && hitsNow[+el.dataset.i]) pick(hitsNow[+el.dataset.i]);
       };
       inp.oninput = () => {
         const raw = inp.value.trim(), q = raw.replace(/\s/g, '');
         clearTimeout(timer);
+        if (d[k] && inp.value === d[k].name) { list.classList.remove('show'); return; } // 방금 고른 값
         if (!q) { list.classList.remove('show'); return; }
         const local = Object.values(PLACES).filter(p => p.name.replace(/\s/g, '').includes(q));
         if (!HAS_PLACES) { show(local, false); return; }
@@ -762,16 +787,18 @@ VIEWS.create = {
         const my = ++seq;
         timer = setTimeout(async () => {   // 타이핑 멈추고 0.25초 뒤 카카오 검색
           const remote = await searchPlaces(raw);
-          if (my !== seq || document.activeElement !== inp) return; // 더 입력했거나 입력칸을 벗어났으면 버림
+          if (my !== seq || (document.activeElement !== inp && !enterWaiting)) return; // 더 입력했거나 입력칸을 벗어났으면 버림
           const seen = new Set(local.map(p => p.name));
           show([...local, ...remote.filter(p => !seen.has(p.name))], false);
         }, 250);
       };
       inp.onblur = () => setTimeout(() => list.classList.remove('show'), 200);
-      inp.onkeydown = e => {   // Enter → 첫 번째 결과 선택 (한글 조합 중 Enter 는 무시)
-        if (e.key !== 'Enter' || e.isComposing) return;
+      inp.onkeydown = e => {   // Enter → 첫 번째 결과 선택
+        if (e.key !== 'Enter') return;
         e.preventDefault();
-        const first = $('div[data-i]', list); if (first) first.click();
+        const searching = !!$('.ac-src', list) || /검색 중/.test(list.textContent);
+        if (e.isComposing || searching || !hitsNow.length) { enterWaiting = true; return; } // 결과가 오면 그때 선택
+        pick(hitsNow[0]);
       };
     });
     if ($('#dtInput')) $('#dtInput').onchange = e => { d.dt = e.target.value; autoSafe(); updateEstimate(); };
