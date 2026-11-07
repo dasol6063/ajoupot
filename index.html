@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>아주팟 — 아주대 학생 전용 택시팟 (데모)</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="stage">
+    <aside class="intro">
+      <div class="intro-badge">발표용 MVP 데모 · 기획서 v0.3</div>
+      <h1>🚕 아주팟</h1>
+      <p class="intro-sub">아주대 계정으로만 가입하는<br />통학생을 위한 택시 동승 · 비용 분담 서비스</p>
+      <p class="intro-quote">"만 원짜리 택시, 넷이 타면 2,500원."</p>
+
+      <h3>발표 데모 순서</h3>
+      <div class="scenarios">
+        <button onclick="demoGo('login')"><b>① 로그인 → 시간표 연동</b><span>학교 계정 · 시간표 동의 · 카드 등록</span></button>
+        <button onclick="demoGo('home')"><b>② 추천 탭</b><span>비 오는 날·막차 알림 · 버스 vs 택시팟</span></button>
+        <button onclick="demoGo('rain')"><b>③ 지금 바로 팟 참여</b><span>10분 안 출발 · 카드 자동 선결제</span></button>
+        <button onclick="demoGo('under')"><b>④ 인원 미달 팝업</b><span>"2명이 1인 X원으로 출발할까요?"</span></button>
+        <button onclick="demoGo('settle')"><b>⑤ 택시 부르기 → 거리 비례 정산</b><span>카카오T/우버 · 수원역 경유 하차</span></button>
+        <button onclick="demoGo('save')"><b>⑥ 절약 대시보드</b><span>아낀 금액 · 탄소 절감 · 학기 결산</span></button>
+      </div>
+      <h3>추가 시나리오</h3>
+      <div class="scenarios">
+        <button onclick="demoGo('exam')"><b>시험 끝나고 막차 끊김</b><span>시험 종료 22:30 · 막차 22:40</span></button>
+        <button onclick="demoGo('concert')"><b>콘서트 이벤트 팟</b><span>가는 편 / 오는 편 · 안심 귀가</span></button>
+        <button onclick="demoGo('regular')"><b>정기 통학팟</b><span>화·목 08:30 광교중앙역 → 아주대</span></button>
+        <button onclick="demoGo('create')"><b>지도 핀으로 팟 만들기</b><span>출발·경유·도착 · 최소 인원 · 정산 방식</span></button>
+        <button onclick="demoGo('calc')"><b>거리 비례 정산 계산기</b><span>1/N vs 거리 비례 비교</span></button>
+      </div>
+
+      <details>
+        <summary>📊 경쟁 서비스 비교</summary>
+        <table>
+          <tr><th></th><th>학교인증</th><th>자동추천</th><th>정산</th><th>노쇼</th><th>전용</th></tr>
+          <tr><td>에브리타임</td><td>O</td><td>X</td><td>X</td><td>X</td><td>X</td></tr>
+          <tr><td>카카오T</td><td>X</td><td>X</td><td>본인</td><td>-</td><td>X</td></tr>
+          <tr><td>합승 중개 앱</td><td>X</td><td>일부</td><td>O</td><td>일부</td><td>O</td></tr>
+          <tr><td><b>아주팟</b></td><td>O</td><td>O</td><td>O</td><td>O</td><td>O</td></tr>
+        </table>
+      </details>
+      <details>
+        <summary>💼 수익 모델</summary>
+        <ul><li>건당 소액 수수료 (예: 1인 200원)</li><li>학교·총학생회 제휴 (시험기간 심야 지원)</li><li>이벤트 주최 측 제휴</li><li>지역 상권 쿠폰 (방장 포인트 교환처)</li><li>택시 호출 플랫폼 제휴</li></ul>
+      </details>
+      <details>
+        <summary>📈 성과 지표 (KPI)</summary>
+        <ul><li>매칭 성공률 · 평균 매칭 시간</li><li>노쇼율 (목표 3% 미만)</li><li>1인당 월 평균 절약 금액</li><li>재이용률 · 정기팟 유지율 · 가입률</li></ul>
+      </details>
+      <details>
+        <summary>⚖️ 법적 이슈</summary>
+        <ul><li>"합승" vs "일행 동승" 해석 — 출시 전 법률 검토</li><li>선결제 보관 → 전자금융거래법, PG 에스크로 고려</li><li>개인정보(시간표·위치) 최소 수집·동의</li><li>노쇼 금액 몰수 약관 고지</li></ul>
+      </details>
+      <button class="intro-reset" onclick="resetDemo()">↺ 데모 데이터 초기화</button>
+      <p class="intro-foot">모든 데이터는 가짜이며 브라우저(localStorage)에만 저장됩니다.<br />지도: <span id="mapCredit">Leaflet + OpenStreetMap</span></p>
+    </aside>
+
+    <div class="phone">
+      <div class="notch"></div>
+      <div class="statusbar"><span id="clock">9:41</span><span class="sb-icons">▂▄▆ 📶 🔋</span></div>
+      <div id="app"></div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="config.js"></script>
+  <script>
+    // 카카오맵 키가 있으면 SDK를 동기로 불러옴 (없으면 Leaflet 사용)
+    if (window.KAKAO_MAP_KEY) document.write('<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_MAP_KEY) + '"><\/script>');
+  </script>
+  <script src="map.js"></script>
+  <script>document.getElementById('mapCredit').textContent = MAP_PROVIDER === 'kakao' ? '카카오맵' : 'Leaflet + OpenStreetMap (HOT 타일)';</script>
+  <script src="app.js"></script>
+</body>
+</html>
