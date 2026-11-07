@@ -123,6 +123,30 @@ function makeMap(el, center = [37.2796, 127.0438], zoom = 14) {
   setTimeout(() => m.relayout(), 60);
   return m;
 }
+/* ---------- 장소 검색 · 주소 변환 (카카오 services 라이브러리) ----------
+   카카오맵 키가 없으면 둘 다 빈 결과(앱은 기존 장소 목록만 사용) */
+const HAS_PLACES = MAP_PROVIDER === 'kakao' && !!(kakao.maps.services);
+const AJOU = [37.2796, 127.0438];
+function searchPlaces(q) {
+  if (!HAS_PLACES || !q) return Promise.resolve([]);
+  return new Promise(res => {
+    new kakao.maps.services.Places().keywordSearch(q, (data, status) => {
+      if (status !== kakao.maps.services.Status.OK) return res([]);
+      res(data.slice(0, 7).map(d => ({ name: d.place_name, addr: d.road_address_name || d.address_name, lat: +d.y, lng: +d.x })));
+    }, { location: KLL(AJOU), radius: 20000, sort: kakao.maps.services.SortBy.ACCURACY });
+  });
+}
+function addressOf(lat, lng) {
+  if (!HAS_PLACES) return Promise.resolve(null);
+  return new Promise(res => {
+    new kakao.maps.services.Geocoder().coord2Address(lng, lat, (data, status) => {
+      if (status !== kakao.maps.services.Status.OK || !data[0]) return res(null);
+      const a = data[0];
+      res((a.road_address && (a.road_address.building_name || a.road_address.address_name)) || (a.address && a.address.address_name) || null);
+    });
+  });
+}
+
 /* ---------- 실제 도로 경로 (OSRM 공개 서버, 키 없음) ---------- */
 const routeCache = {};
 function fetchRoute(lls) {

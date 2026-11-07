@@ -177,6 +177,9 @@ section { margin-top: 22px; }
 .pin.p { background: var(--blue); }
 .leaflet-popup-content { font-family: Pretendard, sans-serif; font-size: 13px; margin: 10px 12px; }
 .pop b { display: block; margin-bottom: 3px; }
+.wx-chip { white-space: nowrap; }
+.ac-list .ac-addr { display: block; font-size: 11px; color: var(--muted); margin-top: 2px; }
+.ac-list .ac-src { font-size: 10px; color: var(--muted); padding: 6px 12px 2px; cursor: default; }
 /* 카카오맵 커스텀 오버레이 */
 .kpin { width: 30px; height: 34px; cursor: pointer; }
 .kpop { position: relative; margin-bottom: 42px; background: #fff; border-radius: 12px; box-shadow: 0 3px 14px rgba(0,0,0,.25); padding: 10px 12px; font-family: Pretendard, sans-serif; font-size: 13px; white-space: nowrap; }

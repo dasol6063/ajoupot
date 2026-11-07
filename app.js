@@ -440,7 +440,7 @@ function podCard(p, { showRec = false, joinBtn = false } = {}) {
   const canJoin = joinBtn && !meIn(p) && p.members.length < p.max;
   return `<div class="pod-card ${meIn(p) ? 'mine' : ''}" onclick="go('pod',{id:'${p.id}'})">
     <div class="pc-tags">${podTags(p)}</div>
-    ${showRec && p.rec ? `<div class="pc-rec">${esc(p.rec.text)}</div>` : ''}
+    ${showRec && p.rec ? `<div class="pc-rec">${esc(recText(p))}</div>` : ''}
     <div class="pc-route"><span class="dot s"></span><b>${esc(p.from.name)}</b></div>
     ${(p.stops || []).map(s => `<div class="pc-route" style="font-size:13px;color:var(--muted)"><span class="dot" style="background:var(--blue)"></span>${esc(s.name)} 경유</div>`).join('')}
     <div class="pc-route"><span class="dot e"></span><b>${esc(p.to.name)}</b></div>
@@ -473,6 +473,44 @@ function monthStats() {
   return { rides: hs.length, saved, co, co2, allSaved, allRides: S.history.length, allCo: S.history.reduce((a, h) => a + h.n - 1, 0) };
 }
 
+/* ---------- 실제 날씨 (Open-Meteo, 키 없음 · 아주대 기준) ----------
+   데모용 강제 설정: 주소 뒤에 ?weather=rain 또는 ?weather=clear */
+const WX = { ready: false, temp: null, code: null, now: 'clear', soonProb: 0 };
+const WX_FORCE = new URLSearchParams(location.search).get('weather');
+const WX_RAIN = c => (c >= 51 && c <= 67) || (c >= 80 && c <= 82) || c >= 95;
+const WX_SNOW = c => (c >= 71 && c <= 77) || c === 85 || c === 86;
+function wxIcon(c) {
+  if (c == null) return '🌡️';
+  if (c >= 95) return '⛈️'; if (WX_SNOW(c)) return '🌨️'; if (WX_RAIN(c)) return '🌧️';
+  if (c === 45 || c === 48) return '🌫️'; if (c === 0) return '☀️'; if (c <= 2) return '🌤️'; return '☁️';
+}
+function wxText(c) {
+  if (c == null) return '';
+  if (c >= 95) return '뇌우'; if (WX_SNOW(c)) return '눈'; if (WX_RAIN(c)) return c <= 57 ? '이슬비' : '비';
+  if (c === 45 || c === 48) return '안개'; if (c === 0) return '맑음'; if (c <= 2) return '구름 조금'; return '흐림';
+}
+const isRaining = () => WX_FORCE ? WX_FORCE === 'rain' : WX.now === 'rain' || WX.now === 'snow';
+async function loadWeather() {
+  try {
+    const r = await fetch('https://api.open-meteo.com/v1/forecast?latitude=37.2796&longitude=127.0438&current=temperature_2m,weather_code&hourly=precipitation_probability&forecast_hours=3&timezone=Asia%2FSeoul');
+    const j = await r.json();
+    WX.temp = Math.round(j.current.temperature_2m); WX.code = j.current.weather_code;
+    WX.now = WX_RAIN(WX.code) ? 'rain' : WX_SNOW(WX.code) ? 'snow' : 'clear';
+    WX.soonProb = Math.max(0, ...(j.hourly.precipitation_probability || []).filter(x => x != null));
+    WX.ready = true;
+  } catch (e) { return; } // 실패하면 날씨 영역만 숨김
+  const top = stack[stack.length - 1];
+  if (top.v === 'home' && S.user && !$('.sheet-wrap') && document.activeElement.tagName !== 'INPUT') render();
+}
+// 비 추천 문구는 실제로 비가 올 때만, 아니면 평범한 즐겨찾기 문구로
+const recText = p => (p.rec.type === 'rain' && !isRaining()) ? '⭐ 즐겨찾는 경로 (학교 → 수원역)' : p.rec.text;
+function weatherBanner(rainCount) {
+  const tempTxt = WX.ready ? ` · ${WX.temp}°C` : '';
+  if (isRaining()) return `<div class="alert-rain" onclick="findWith('수원역','now')"><div class="ar-ic">${WX.now === 'snow' ? '🌨️' : '☔'}</div><div><b>지금 ${WX.now === 'snow' ? '눈이' : '비가'} 와요${tempTxt}</b><br><span>수원역 가는 팟 ${rainCount}개 모집 중 · 지금 바로 참여 →</span></div></div>`;
+  if (WX.ready && WX.soonProb >= 60) return `<div class="alert-rain" style="background:linear-gradient(120deg,#3b5b8a,#5b7fb5)" onclick="findWith('수원역','book')"><div class="ar-ic">🌂</div><div><b>3시간 안에 비 소식 (${WX.soonProb}%)</b><br><span>미리 수원역 가는 팟 예약해 두기 →</span></div></div>`;
+  return '';
+}
+
 VIEWS.home = {
   html() {
     const open = S.pods.filter(p => p.status === 'open' && !p.eventId);
@@ -488,11 +526,11 @@ VIEWS.home = {
       .sort((a, b) => a.min - b.min);
     return header('<span class="logo">🚕 아주팟</span>', { right: '<button class="icon-btn" onclick="showNotifs()">🔔<i class="badge-dot"></i></button>' }) + `
     <div class="content">
-      <div class="hello">안녕하세요, <b>${esc(S.user.nick)}</b>님 👋<br><small>오늘도 같이 타고 아껴요</small></div>
+      <div class="hello">안녕하세요, <b>${esc(S.user.nick)}</b>님 👋<br><small>오늘도 같이 타고 아껴요${WX.ready ? ` · <span class="wx-chip">${wxIcon(WX.code)} 아주대 ${WX.temp}°C ${wxText(WX.code)}</span>` : ''}</small></div>
       ${restricted() ? `<div class="penalty-on" style="margin-top:12px">🚫 노쇼 누적으로 ${fmtDate(S.user.penaltyUntil)}까지 팟 참여가 제한돼요</div>` : ''}
       ${mine.length ? `<div class="next-ride" onclick="go('pod',{id:'${mine[0].id}'})">🚕 내 다음 탑승 · ${fmtLeft(departOf(mine[0]))}<b>${esc(mine[0].from.name)} → ${esc(mine[0].to.name)}</b></div>` : ''}
 
-      <div class="alert-rain" onclick="findWith('수원역','now')"><div class="ar-ic">☔</div><div><b>지금 비가 와요</b><br><span>수원역 가는 팟 ${rainCount}개 모집 중 · 지금 바로 참여 →</span></div></div>
+      ${weatherBanner(rainCount)}
       <div class="alert-rain" style="margin-top:8px;background:linear-gradient(120deg,#8a4b00,#d97706)" onclick="go('pod',{id:'p4'})"><div class="ar-ic">🚌</div><div><b>${BUS.last[0].to} 막차 ${BUS.last[0].time}${lb.left > 0 && lb.left <= 90 ? ` (${lb.left}분 후 종료)` : ''}</b><br><span>시험 종료 22:30 → 막차 놓칠 수 있어요. 같은 시험 학우 팟 보기 →</span></div></div>
 
       <section>
@@ -549,7 +587,7 @@ function findWith(dest, mode) { UI.dest = dest; UI.findMode = mode || 'book'; UI
 
 function showNotifs() {
   const items = [
-    ['☔', '비 오는 날! 오늘 수원역 가는 팟 3개 모집 중', '방금', "findWith('수원역','now')"],
+    ...(isRaining() ? [['☔', `${WX.now === 'snow' ? '눈' : '비'} 오는 날! 수원역 가는 팟 모집 중${WX.ready ? ` (지금 ${WX.temp}°C)` : ''}`, '방금', "findWith('수원역','now')"]] : []),
     ['🚌', '수원역 방면 막차 22:40 · 시험 종료(22:30) 후 막차를 놓칠 수 있어요. 같은 시험 학우 팟이 있어요', '10분 전', "go('pod',{id:'p4'})"],
     ['🔁', '화·목 08:30 광교중앙역 → 아주대 정기팟을 추천해요', '1시간 전', "go('pod',{id:'p9'})"],
     ['🎤', 'OO 콘서트 오는 편 팟 · 안심 귀가 공유 기본 ON', '어제', "go('event',{id:'e1'})"],
@@ -705,13 +743,29 @@ VIEWS.create = {
     $$('.pick-toggle button').forEach(b => b.onclick = () => { d.pick = b.dataset.pick; $$('.pick-toggle button').forEach(x => x.classList.toggle('on', x === b)); });
     ['from', 'stop', 'to'].forEach(k => {
       const inp = $('#in_' + k), list = $('#ac_' + k);
-      inp.oninput = () => {
-        const q = inp.value.replace(/\s/g, '');
-        if (!q) { list.classList.remove('show'); return; }
-        const hits = Object.values(PLACES).filter(p => p.name.replace(/\s/g, '').includes(q));
-        list.innerHTML = hits.length ? hits.map((p, i) => `<div data-i="${i}">📍 ${esc(p.name)}</div>`).join('') : '<div style="color:var(--muted)">검색 결과 없음 — 지도에서 핀으로 지정해 주세요</div>';
+      let timer = null, seq = 0;
+      const show = (hits, loading) => {
+        list.innerHTML = hits.length
+          ? hits.map((p, i) => `<div data-i="${i}">${p.addr ? '🔎' : '📍'} ${esc(p.name)}${p.addr ? `<span class="ac-addr">${esc(p.addr)}</span>` : ''}</div>`).join('')
+            + (loading ? '<div class="ac-src">카카오 장소 검색 중…</div>' : '')
+          : `<div style="color:var(--muted)">${loading ? '카카오 장소 검색 중…' : '검색 결과 없음 — 지도에서 핀으로 지정해 주세요'}</div>`;
         list.classList.add('show');
-        $$('div[data-i]', list).forEach(el => el.onclick = () => { setPoint(k, hits[+el.dataset.i]); list.classList.remove('show'); });
+        $$('div[data-i]', list).forEach(el => el.onclick = () => { const h = hits[+el.dataset.i]; setPoint(k, { name: h.name, lat: h.lat, lng: h.lng }); list.classList.remove('show'); });
+      };
+      inp.oninput = () => {
+        const raw = inp.value.trim(), q = raw.replace(/\s/g, '');
+        clearTimeout(timer);
+        if (!q) { list.classList.remove('show'); return; }
+        const local = Object.values(PLACES).filter(p => p.name.replace(/\s/g, '').includes(q));
+        if (!HAS_PLACES) { show(local, false); return; }
+        show(local, true);
+        const my = ++seq;
+        timer = setTimeout(async () => {   // 타이핑 멈추고 0.25초 뒤 카카오 검색
+          const remote = await searchPlaces(raw);
+          if (my !== seq || document.activeElement !== inp) return; // 더 입력했거나 입력칸을 벗어났으면 버림
+          const seen = new Set(local.map(p => p.name));
+          show([...local, ...remote.filter(p => !seen.has(p.name))], false);
+        }, 250);
       };
       inp.onblur = () => setTimeout(() => list.classList.remove('show'), 200);
     });
@@ -725,6 +779,7 @@ VIEWS.create = {
       cMap.onClick(ll => {
         const near = nearestPlace(ll);
         setPoint(d.pick, { name: near ? `${near.name} 근처` : '지도에서 선택한 위치', lat: ll.lat, lng: ll.lng });
+        if (!near) fillAddress(d.pick);
       });
     }
     drawCreateMarkers(true);
@@ -746,6 +801,14 @@ function nearestPlace(ll) {
   Object.values(PLACES).forEach(p => { const dd = distKm(p, { lat: ll.lat, lng: ll.lng }); if (dd < bd) { bd = dd; best = p; } });
   return best;
 }
+// 지도에서 찍은 위치를 실제 주소 이름으로 바꾸기 (그 사이 다른 곳을 찍었으면 무시)
+async function fillAddress(key) {
+  const p = draft[key]; if (!p) return;
+  const addr = await addressOf(p.lat, p.lng);
+  if (!addr || draft[key] !== p) return;
+  p.name = addr;
+  const inp = $('#in_' + key); if (inp) inp.value = addr;
+}
 function setPoint(key, place) {
   draft[key] = place ? { name: place.name, lat: place.lat, lng: place.lng } : null;
   const inp = $('#in_' + key); if (inp) inp.value = place ? place.name : '';
@@ -766,6 +829,7 @@ function drawCreateMarkers(fit) {
         const near = nearestPlace(ll);
         draft[k] = { name: near ? `${near.name} 근처` : '지도에서 선택한 위치', lat: ll.lat, lng: ll.lng };
         $('#in_' + k).value = draft[k].name; drawCreateMarkers(false); updateEstimate();
+        if (!near) fillAddress(k);
       },
     });
   });
@@ -913,7 +977,7 @@ VIEWS.pod = {
       <div class="map-box" id="podMap"></div>
       <div class="pd-card">
         <div class="pc-tags">${podTags(p)}</div>
-        ${p.rec ? `<div class="pc-rec">${esc(p.rec.text)}</div>` : ''}
+        ${p.rec ? `<div class="pc-rec">${esc(recText(p))}</div>` : ''}
         <div class="pd-route">
           <div class="pc-route"><span class="dot s"></span>${esc(p.from.name)}</div>
           ${p.stops.map(s => `<div class="pc-route" style="font-size:14px;color:var(--sub)"><span class="dot" style="background:var(--blue)"></span>${esc(s.name)} (경유·하차 가능)</div>`).join('')}
@@ -1534,3 +1598,4 @@ onRoadKm = () => {
 };
 save();
 render();
+loadWeather(); setInterval(loadWeather, 15 * 60000);

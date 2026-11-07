@@ -71,7 +71,7 @@
   <script src="config.js"></script>
   <script>
     // 카카오맵 키가 있으면 SDK를 동기로 불러옴 (없으면 Leaflet 사용)
-    if (window.KAKAO_MAP_KEY) document.write('<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_MAP_KEY) + '"><\/script>');
+    if (window.KAKAO_MAP_KEY) document.write('<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_MAP_KEY) + '&libraries=services"><\/script>');
   </script>
   <script src="map.js"></script>
   <script>document.getElementById('mapCredit').textContent = MAP_PROVIDER === 'kakao' ? '카카오맵' : 'Leaflet + OpenStreetMap (HOT 타일)';</script>
