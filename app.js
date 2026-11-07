@@ -768,6 +768,11 @@ VIEWS.create = {
         }, 250);
       };
       inp.onblur = () => setTimeout(() => list.classList.remove('show'), 200);
+      inp.onkeydown = e => {   // Enter → 첫 번째 결과 선택 (한글 조합 중 Enter 는 무시)
+        if (e.key !== 'Enter' || e.isComposing) return;
+        e.preventDefault();
+        const first = $('div[data-i]', list); if (first) first.click();
+      };
     });
     if ($('#dtInput')) $('#dtInput').onchange = e => { d.dt = e.target.value; autoSafe(); updateEstimate(); };
     if ($('#timeInput')) $('#timeInput').onchange = e => { d.time = e.target.value; updateEstimate(); };

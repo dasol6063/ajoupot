@@ -6,7 +6,8 @@
   <title>아주팟 — 아주대 학생 전용 택시팟 (데모)</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <link rel="stylesheet" href="style.css" />
+  <!-- ?v= 값: 새로 배포할 때마다 바꾸면 브라우저가 예전 파일 대신 새 파일을 받음 -->
+  <link rel="stylesheet" href="style.css?v=1107b" />
 </head>
 <body>
   <div class="stage">
@@ -57,7 +58,7 @@
         <ul><li>"합승" vs "일행 동승" 해석 — 출시 전 법률 검토</li><li>선결제 보관 → 전자금융거래법, PG 에스크로 고려</li><li>개인정보(시간표·위치) 최소 수집·동의</li><li>노쇼 금액 몰수 약관 고지</li></ul>
       </details>
       <button class="intro-reset" onclick="resetDemo()">↺ 데모 데이터 초기화</button>
-      <p class="intro-foot">모든 데이터는 가짜이며 브라우저(localStorage)에만 저장됩니다.<br />지도: <span id="mapCredit">Leaflet + OpenStreetMap</span></p>
+      <p class="intro-foot">모든 데이터는 가짜이며 브라우저(localStorage)에만 저장됩니다.<br />지도: <span id="mapCredit">Leaflet + OpenStreetMap</span> · 버전 11.07-b</p>
     </aside>
 
     <div class="phone">
@@ -68,13 +69,13 @@
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <script src="config.js"></script>
+  <script src="config.js?v=1107b"></script>
   <script>
     // 카카오맵 키가 있으면 SDK를 동기로 불러옴 (없으면 Leaflet 사용)
     if (window.KAKAO_MAP_KEY) document.write('<script src="https://dapi.kakao.com/v2/maps/sdk.js?appkey=' + encodeURIComponent(KAKAO_MAP_KEY) + '&libraries=services"><\/script>');
   </script>
-  <script src="map.js"></script>
+  <script src="map.js?v=1107b"></script>
   <script>document.getElementById('mapCredit').textContent = MAP_PROVIDER === 'kakao' ? '카카오맵' : 'Leaflet + OpenStreetMap (HOT 타일)';</script>
-  <script src="app.js"></script>
+  <script src="app.js?v=1107b"></script>
 </body>
 </html>
